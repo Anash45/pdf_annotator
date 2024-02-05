@@ -1,0 +1,93 @@
+<!-- annotate_pdf.html -->
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Annotate PDF</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.js"></script>
+    <style>
+        .pdf-canvas{
+            position: relative;
+        }
+        .dots{
+            position: absolute;
+            height: 15px;
+            width: 15px;
+            background: red;
+            z-index: 9;
+            cursor: pointer;
+            transform: translate(-50%, -50%);
+        }
+    </style>
+  </head>
+  <!-- annotate_pdf.html -->
+  <body>
+    <h1>Annotate PDF</h1>
+    <p>PDF ID: {{ pdf_document.id }}</p>
+
+    <div class="pdf-canvas-container">
+      <canvas id="pdf-canvas"></canvas>
+        {% for comment in pdf_document.comment_set.all %}
+        <div class="dots" title="{{ comment.content }}" style="top: {{ comment.y_position }}px; left: {{ comment.x_position }}px;">
+           
+        </div>
+        {% endfor %}
+    </div>
+
+    <form
+      method="post"
+      action="{% url 'annotate_pdf' pdf_id=pdf_document.id %}"
+    >
+      {% csrf_token %}
+      <label for="comment_content">Comment:</label>
+      <input type="text" name="comment_content" required />
+      <label for="x_position">X Position:</label>
+      <input type="text" name="x_position" id="x_position" required />
+      <label for="y_position">Y Position:</label>
+      <input type="text" name="y_position" id="y_position" required />
+      <button type="submit">Add Comment</button>
+    </form>
+
+    
+    
+
+    <script>
+        // PDF rendering logic
+        const pdfCanvas = document.getElementById('pdf-canvas');
+        const pdfUrl = '{{ pdf_document.file.url }}';  // Use the URL of the uploaded PDF
+    
+        pdfjsLib.getDocument(pdfUrl).promise.then(pdf => {
+            pdf.getPage(1).then(page => {
+                const viewport = page.getViewport({ scale: 1 });
+                pdfCanvas.height = viewport.height;
+                pdfCanvas.width = viewport.width;
+    
+                const ctx = pdfCanvas.getContext('2d');
+                const renderTask = page.render({
+                    canvasContext: ctx,
+                    viewport: viewport
+                });
+    
+                renderTask.promise.then(() => {
+                    console.log('PDF rendered');
+    
+                    // Handle mouse click event on the canvas
+                    pdfCanvas.addEventListener('click', (event) => {
+                        const rect = pdfCanvas.getBoundingClientRect();
+                        const x = event.clientX - rect.left;
+                        const y = event.clientY - rect.top;
+    
+                        // Update the input fields with the calculated x and y positions
+                        document.getElementById('x_position').value = x;
+                        document.getElementById('y_position').value = y;
+    
+                        console.log('Clicked at:', x, y);
+                    });
+                });
+            });
+        });
+
+    </script>
+  </body>
+</html>
